@@ -14,11 +14,11 @@ import csv
 
 
 def main(
-    data_path="/Users/kurosh/Documents/DEV/python/preject-detection/data/debug",
-    weights_path="/Users/kurosh/Documents/DEV/python/preject-detection/checkpoints/",
+    data_path="/Users/kurosh/Documents/DEV/python/project_detection/data/debug",
+    weights_path="/Users/kurosh/Documents/DEV/python/project_detection/checkpoints/",
     preload_weights_file="darknet53.conv.74",
-    output_path="/Users/kurosh/Documents/DEV/python/preject-detection/output",
-    yolo_config_file="/Users/kurosh/Documents/DEV/python/preject-detection/configs/yolov3.cfg",
+    output_path="/Users/kurosh/Documents/DEV/python/project_detection/output",
+    yolo_config_file="/Users/kurosh/Documents/DEV/python/project_detection/configs/yolov3.cfg",
     learning_rate=1e-3,
     weight_decay=1e-4,
     batch_size=2,

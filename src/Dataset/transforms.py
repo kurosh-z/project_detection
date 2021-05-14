@@ -1,13 +1,14 @@
 import random
+from src.utils.show_image import show_image
+import torch
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
-import sys
-import os
 from ..utils.augUtil import *
+from ..utils.show_image import show_image
 
-lib_path = os.path.join(os.path.realpath("."), "data_aug")
-sys.path.append(lib_path)
+# lib_path = os.path.join(os.path.realpath("."), "data_aug")
+# sys.path.append(lib_path)
 
 
 class RandomHorizontalFlip(object):
@@ -663,26 +664,27 @@ class Resize(object):
         self.inp_dim = inp_dim
 
     def __call__(self, img, bboxes):
-        w, h = img.shape[1], img.shape[0]
-        img = letterbox_image(img, self.inp_dim)
+        img_w, img_h = img.shape[1], img.shape[0]
+        w, h = self.inp_dim
+        new_w = int(img_w * min(w / img_w, h / img_h))
+        new_h = int(img_h * min(w / img_w, h / img_h))
+        resized_image = cv2.resize(img, (new_w, new_h))
+        padded_image = np.full((w, h, 3), 0.0).astype(np.float32)
+        padd_h = h - new_h
+        padd_w = w - new_w
+        padded_image[padd_h // 2 : padd_h // 2 + new_h, padd_w // 2 : padd_w // 2 + new_w, :] = resized_image
+        # show_image((img, {"classes": [0 for i in range(len(bboxes))], "boxes": bboxes}))
+        # fig, ax = plt.subplots(1, 2)
+        # ax[0].imshow(draw_rect(img, bboxes))
+        scaleY = new_h / img_h
+        scaleX = new_w / img_w
+        bboxes[:, ...] *= np.array([scaleY, scaleX, scaleY, scaleX])
+        bboxes[:, ...] += np.array([padd_h / 2.0, padd_w / 2.0, padd_h / 2.0, padd_w / 2.0])
 
-        scale = min(self.inp_dim / h, self.inp_dim / w)
-        bboxes[:, :4] *= scale
+        # ax[1].imshow(draw_rect(padded_image, bboxes))
+        # plt.show()
 
-        new_w = scale * w
-        new_h = scale * h
-        inp_dim = self.inp_dim
-
-        del_h = (inp_dim - new_h) / 2
-        del_w = (inp_dim - new_w) / 2
-
-        add_matrix = np.array([[del_w, del_h, del_w, del_h]]).astype(int)
-
-        bboxes[:, :4] += add_matrix
-
-        img = img.astype(np.uint8)
-
-        return img, bboxes
+        return padded_image, bboxes
 
 
 class RandomHSV(object):
@@ -771,7 +773,7 @@ class RandomHSV(object):
         return img, bboxes
 
 
-class Sequence(object):
+class RandomAugs(object):
 
     """Initialise Sequence object
 
@@ -812,3 +814,30 @@ class Sequence(object):
             if random.random() < prob:
                 images, bboxes = augmentation(images, bboxes)
         return images, bboxes
+
+
+class ToTensor(object):
+    """Convert ndarrays in sample to Tensors."""
+
+    def __init__(self):
+        pass
+
+    def __call__(self, data):
+        image, labels = data
+
+        # swap color axis because
+        # numpy image: H x W x C
+        # torch image: C X H X W
+        image = image.transpose((2, 0, 1))
+
+        return torch.from_numpy(image), torch.from_numpy(labels)
+
+
+# class SquarePad:
+#     def __call__(self, image):
+#         w, h = image.size
+#         max_wh = np.max([w, h])
+#         hp = int((max_wh - w) / 2)
+#         vp = int((max_wh - h) / 2)
+#         padding = (hp, vp, hp, vp)
+#         return F.pad(image, padding, 0, "constant")

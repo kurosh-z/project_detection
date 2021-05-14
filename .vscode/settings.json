@@ -1,0 +1,4 @@
+{
+  "python.pythonPath": "/Users/kurosh/.pyenv/versions/3.9.0/bin/python",
+  "python.analysis.extraPaths": ["./Model", "./utils", "./Dataset"]
+}

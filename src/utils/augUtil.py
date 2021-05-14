@@ -3,6 +3,7 @@
 
 import cv2
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 def draw_rect(im, cords, color=None):
@@ -27,7 +28,7 @@ def draw_rect(im, cords, color=None):
 
     """
 
-    im = im.copy()
+    im = im.copy().astype(np.float32)
 
     cords = cords[:, :4]
     cords = cords.reshape(-1, 4)
@@ -35,7 +36,7 @@ def draw_rect(im, cords, color=None):
         color = [255, 255, 255]
     for cord in cords:
 
-        pt1, pt2 = (cord[0], cord[1]), (cord[2], cord[3])
+        pt1, pt2 = (cord[1], cord[2]), (cord[3], cord[0])
 
         pt1 = int(pt1[0]), int(pt1[1])
         pt2 = int(pt2[0]), int(pt2[1])
@@ -291,15 +292,47 @@ def letterbox_image(img, inp_dim):
 
     """
 
-    inp_dim = (inp_dim, inp_dim)
+    # inp_dim = (inp_dim, inp_dim)
     img_w, img_h = img.shape[1], img.shape[0]
     w, h = inp_dim
     new_w = int(img_w * min(w / img_w, h / img_h))
     new_h = int(img_h * min(w / img_w, h / img_h))
     resized_image = cv2.resize(img, (new_w, new_h))
 
-    canvas = np.full((inp_dim[1], inp_dim[0], 3), 0)
+    canvas = np.full((w, h, 3), 0.0).astype(np.float32)
 
     canvas[(h - new_h) // 2 : (h - new_h) // 2 + new_h, (w - new_w) // 2 : (w - new_w) // 2 + new_w, :] = resized_image
+    canvas.astype(np.float32)
 
     return canvas
+
+
+# from PIL import Image, ImageOps
+
+
+# def padding(img, expected_size):
+#     desired_size = expected_size
+#     delta_width = desired_size - img.size[0]
+#     delta_height = desired_size - img.size[1]
+#     pad_width = delta_width // 2
+#     pad_height = delta_height // 2
+#     padding = (pad_width, pad_height, delta_width - pad_width, delta_height - pad_height)
+#     return ImageOps.expand(img, padding)
+
+
+# def resize_with_padding(_img, expected_size):
+#     img = numpyToPILL(_img)
+#     img.thumbnail((expected_size[0], expected_size[1]))
+#     # print(img.size)
+#     delta_width = expected_size[0] - img.size[0]
+#     delta_height = expected_size[1] - img.size[1]
+#     pad_width = delta_width // 2
+#     pad_height = delta_height // 2
+#     padding = (pad_width, pad_height, delta_width - pad_width, delta_height - pad_height)
+#     newImg = ImageOps.expand(img, padding)
+#     newImg.show()
+#     return newImg
+
+
+# def numpyToPILL(numpy_image):
+#     return Image.fromarray(numpy_image.astype("uint8"), "RGB")

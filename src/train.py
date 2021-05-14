@@ -20,7 +20,8 @@ def train(
     scheduler,
     train_dataloader,
     csv_log_file,
-    tensor_type=torch.cuda.FloatTensor,
+    # tensor_type=torch.cuda.FloatTensor,
+    tensor_type=torch.FloatTensor,
     update_gradient_samples=16,
     freeze_darknet=False,
 ):
@@ -76,7 +77,7 @@ def train(
         # Clear variables from gpu, collect garbage and clear gpu cache memory
         del images, labels
         gc.collect()
-        torch.cuda.empty_cache()
+        # torch.cuda.empty_cache()
 
         # Construct loss data
         loss_data = "%.5f\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f" % (
@@ -113,7 +114,7 @@ def train(
     return model
 
 
-def validation(model, device, valid_dataloader, csv_log_file, tensor_type=torch.cuda.FloatTensor, num_classes=8):
+def validation(model, device, valid_dataloader, csv_log_file, tensor_type=torch.FloatTensor, num_classes=8):
 
     # Set model to evaluation mode
     model.train(False)
@@ -167,7 +168,7 @@ def validation(model, device, valid_dataloader, csv_log_file, tensor_type=torch.
         # Clear variables from gpu, collect garbage and clear gpu cache memory
         del images, labels
         gc.collect()
-        torch.cuda.empty_cache()
+        # torch.cuda.empty_cache()
 
     average_precisions = {}
     for label in range(num_classes):
@@ -250,7 +251,7 @@ def train_model(
     csv_log_file_valid,
     weights_path,
     max_epochs=10,
-    tensor_type=torch.cuda.FloatTensor,
+    tensor_type=torch.FloatTensor,
     update_gradient_samples=16,
     freeze_darknet=False,
     freeze_epoch=-1,
@@ -268,7 +269,7 @@ def train_model(
                 scheduler,
                 train_dataloader,
                 csv_log_file_train,
-                tensor_type=torch.cuda.FloatTensor,
+                tensor_type=torch.FloatTensor,
                 update_gradient_samples=16,
                 freeze_darknet=freeze_darknet,
             )
@@ -280,13 +281,13 @@ def train_model(
                 scheduler,
                 train_dataloader,
                 csv_log_file_train,
-                tensor_type=torch.cuda.FloatTensor,
+                tensor_type=torch.FloatTensor,
                 update_gradient_samples=16,
                 freeze_darknet=False,
             )
 
         model, mAP = validation(
-            model, device, valid_dataloader, csv_log_file_valid, tensor_type=torch.cuda.FloatTensor, num_classes=8
+            model, device, valid_dataloader, csv_log_file_valid, tensor_type=torch.FloatTensor, num_classes=8
         )
 
         # save casual weights here
