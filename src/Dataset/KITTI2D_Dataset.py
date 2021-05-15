@@ -82,15 +82,16 @@ class KITTI2D(Dataset):
         self.image_size = image_size
         self.transform = transform
         self.max_objects = max_objects
+        self.batch_count = 0
         self._load_data()
 
     def _load_data(self):
         if self.mode == "Train":
-            self.x = np.load(os.path.join(self.path, "train/kTrainX.npy"), allow_pickle=True)
-            self.y = np.load(os.path.join(self.path, "train/kTrainY.npy"), allow_pickle=True)
+            self.x = np.load(os.path.join(self.path, "kTrainX.npy"), allow_pickle=True)
+            self.y = np.load(os.path.join(self.path, "kTrainY.npy"), allow_pickle=True)
         if self.mode == "Validate":
-            self.x = np.load(os.path.join(self.path, "validate/kValidX.npy"), allow_pickle=True)
-            self.y = np.load(os.path.join(self.path, "validate/kValidY.npy"), allow_pickle=True)
+            self.x = np.load(os.path.join(self.path, "kValidX.npy"), allow_pickle=True)
+            self.y = np.load(os.path.join(self.path, "kValidY.npy"), allow_pickle=True)
 
     def __len__(self):
         return self.x.shape[0]
@@ -98,17 +99,16 @@ class KITTI2D(Dataset):
     def collate_fn(self, batch):
         images, labels = list(zip(*batch))
         # Remove empty placeholder targets
+        imgs = torch.stack([img for img in images])
+        
+           # Add sample index to targets
+        for idx, boxes in enumerate(labels):
+            boxes[:, 0] = idx
+        labels = torch.cat(labels, 0)
 
-        clDim = max([l.shape[0] for l in labels])
+       
 
-        _images = torch.empty((len(images), *images[0].shape))
-        _labels = torch.empty((len(images), clDim, 5))
-        for idx, img in enumerate(images):
-            _images[idx, ...] = img[...]
-            d = max(labels[idx].shape[0], 1)
-            _labels[idx, 0:d, ...] = labels[idx][...]
-
-        return _images, _labels
+        return imgs, labels
 
     def _prepare(self, image, labels):
 

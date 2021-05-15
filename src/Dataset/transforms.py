@@ -676,6 +676,7 @@ class Resize(object):
         # show_image((img, {"classes": [0 for i in range(len(bboxes))], "boxes": bboxes}))
         # fig, ax = plt.subplots(1, 2)
         # ax[0].imshow(draw_rect(img, bboxes))
+
         scaleY = new_h / img_h
         scaleX = new_w / img_w
         bboxes[:, ...] *= np.array([scaleY, scaleX, scaleY, scaleX])

@@ -1,77 +1,60 @@
 from __future__ import division
-
-from collections import defaultdict
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from torch.autograd import Variable
 import numpy as np
-from ..utils.parse_model_config import parse_model_config
+from ..utils.parse_configs import parse_model_config
 from .create_modules import create_modules
+from .YOLOLayer import YOLOLayer
 
 
 class Darknet(nn.Module):
     """YOLOv3 object detection model"""
 
-    def __init__(self, config_path, img_size=416):
+    def __init__(self, config_path):
         super(Darknet, self).__init__()
         self.module_defs = parse_model_config(config_path)
         self.hyperparams, self.module_list = create_modules(self.module_defs)
-        self.img_size = img_size
+        self.yolo_layers = [layer[0] for layer in self.module_list if isinstance(layer[0], YOLOLayer)]
         self.seen = 0
-        self.header_info = np.array([0, 0, 0, self.seen, 0])
-        self.loss_names = ["x", "y", "w", "h", "conf", "cls", "recall", "precision"]
+        self.header_info = np.array([0, 0, 0, self.seen, 0], dtype=np.int32)
 
-    def forward(self, x, targets=None):
-        is_training = targets is not None
-        output = []
-        self.losses = defaultdict(float)
-        layer_outputs = []
+    def forward(self, x):
+        img_size = x.size(2)
+        layer_outputs, yolo_outputs = [], []
         for i, (module_def, module) in enumerate(zip(self.module_defs, self.module_list)):
             if module_def["type"] in ["convolutional", "upsample", "maxpool"]:
                 x = module(x)
             elif module_def["type"] == "route":
-                layer_i = [int(x) for x in module_def["layers"].split(",")]
-                x = torch.cat([layer_outputs[i] for i in layer_i], 1)
+                x = torch.cat([layer_outputs[int(layer_i)] for layer_i in module_def["layers"].split(",")], 1)
             elif module_def["type"] == "shortcut":
                 layer_i = int(module_def["from"])
                 x = layer_outputs[-1] + layer_outputs[layer_i]
             elif module_def["type"] == "yolo":
-                # Train phase: get loss
-                if is_training:
-                    x, *losses = module[0](x, targets)
-                    for name, loss in zip(self.loss_names, losses):
-                        self.losses[name] += loss
-                # Test phase: Get detections
-                else:
-                    x = module(x)
-                output.append(x)
+                x = module[0](x, img_size)
+                yolo_outputs.append(x)
             layer_outputs.append(x)
+        return yolo_outputs if self.training else torch.cat(yolo_outputs, 1)
 
-        self.losses["recall"] /= 3
-        self.losses["precision"] /= 3
-        return sum(output) if is_training else torch.cat(output, 1)
-
-    def load_weights(self, weights_path, cutoff=-1):
+    def load_darknet_weights(self, weights_path):
         """Parses and loads the weights stored in 'weights_path'"""
-        # Parses and loads the weights stored in 'weights_path'
-        # @:param cutoff  - save layers between 0 and cutoff (cutoff = -1 -> all are saved)
 
-        if weights_path.endswith("darknet53.conv.74"):
-            cutoff = 75
         # Open the weights file
-        fp = open(weights_path, "rb")
-        header = np.fromfile(fp, dtype=np.int32, count=5)  # First five are header values
+        with open(weights_path, "rb") as f:
+            # First five are header values
+            header = np.fromfile(f, dtype=np.int32, count=5)
+            self.header_info = header  # Needed to write header when saving weights
+            self.seen = header[3]  # number of images seen during training
+            weights = np.fromfile(f, dtype=np.float32)  # The rest are weights
 
-        # Needed to write header when saving weights
-        self.header_info = header
-
-        self.seen = header[3]
-        weights = np.fromfile(fp, dtype=np.float32)  # The rest are weights
-        fp.close()
+        # Establish cutoff for loading backbone weights
+        cutoff = None
+        if "darknet53.conv.74" in weights_path:
+            cutoff = 75
 
         ptr = 0
-        for i, (module_def, module) in enumerate(zip(self.module_defs[:cutoff], self.module_list[:cutoff])):
+        for i, (module_def, module) in enumerate(zip(self.module_defs, self.module_list)):
+            if i == cutoff:
+                break
             if module_def["type"] == "convolutional":
                 conv_layer = module[0]
                 if module_def["batch_normalize"]:
@@ -106,13 +89,11 @@ class Darknet(nn.Module):
                 conv_layer.weight.data.copy_(conv_w)
                 ptr += num_w
 
-    """
+    def save_darknet_weights(self, path, cutoff=-1):
+        """
         @:param path    - path of the new weights file
         @:param cutoff  - save layers between 0 and cutoff (cutoff = -1 -> all are saved)
-    """
-
-    def save_weights(self, path, cutoff=-1):
-
+        """
         fp = open(path, "wb")
         self.header_info[3] = self.seen
         self.header_info.tofile(fp)
