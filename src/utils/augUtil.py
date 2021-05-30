@@ -32,6 +32,7 @@ def draw_rect(im, cords, color=None):
 
     cords = cords[:, :4]
     cords = cords.reshape(-1, 4)
+
     if not color:
         color = [255, 255, 255]
     for cord in cords:

@@ -6,6 +6,7 @@ import cv2
 import matplotlib.pyplot as plt
 from ..utils.augUtil import *
 from ..utils.show_image import show_image
+import torchvision.transforms as transforms
 
 # lib_path = os.path.join(os.path.realpath("."), "data_aug")
 # sys.path.append(lib_path)
@@ -675,14 +676,14 @@ class Resize(object):
         padded_image[padd_h // 2 : padd_h // 2 + new_h, padd_w // 2 : padd_w // 2 + new_w, :] = resized_image
         # show_image((img, {"classes": [0 for i in range(len(bboxes))], "boxes": bboxes}))
         # fig, ax = plt.subplots(1, 2)
-        # ax[0].imshow(draw_rect(img, bboxes))
+        # ax[0].imshow(draw_rect(img, bboxes[:, 1:5]))
 
         scaleY = new_h / img_h
         scaleX = new_w / img_w
-        bboxes[:, ...] *= np.array([scaleY, scaleX, scaleY, scaleX])
-        bboxes[:, ...] += np.array([padd_h / 2.0, padd_w / 2.0, padd_h / 2.0, padd_w / 2.0])
+        bboxes[:, 1:5] *= np.array([scaleY, scaleX, scaleY, scaleX])
+        bboxes[:, 1:5] += np.array([padd_h / 2.0, padd_w / 2.0, padd_h / 2.0, padd_w / 2.0])
 
-        # ax[1].imshow(draw_rect(padded_image, bboxes))
+        # ax[1].imshow(draw_rect(padded_image,  bboxes[:, 1:5]))
         # plt.show()
 
         return padded_image, bboxes
@@ -842,3 +843,42 @@ class ToTensor(object):
 #         vp = int((max_wh - h) / 2)
 #         padding = (hp, vp, hp, vp)
 #         return F.pad(image, padding, 0, "constant")
+
+
+class RelativeLabels(object):
+    def __init__(
+        self,
+    ):
+        pass
+
+    def __call__(self, data):
+        img, boxes = data
+        h, w, _ = img.shape
+        boxes[:, [1, 3]] /= w
+        boxes[:, [2, 4]] /= h
+        return img, boxes
+
+
+class ToTensor(object):
+    def __init__(
+        self,
+    ):
+        pass
+
+    def __call__(self, data):
+        img, boxes = data
+        # Extract image as PyTorch tensor
+        img = transforms.ToTensor()(img)
+
+        bb_targets = torch.zeros((len(boxes), 6))
+        bb_targets[:, 1:] = transforms.ToTensor()(boxes)
+
+        return img, bb_targets
+
+
+DEFAULT_TRANSFORMS = transforms.Compose(
+    [
+        RelativeLabels(),
+        ToTensor(),
+    ]
+)

@@ -30,7 +30,7 @@ def evaluate_model_file(
     weights_path,
     img_path,
     class_names,
-    batch_size=8,
+    batch_size=1,
     img_size=416,
     n_cpu=8,
     iou_thres=0.5,

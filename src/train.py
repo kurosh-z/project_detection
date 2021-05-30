@@ -12,11 +12,11 @@ import torch.optim as optim
 
 from .Model.load_model import load_model
 from .utils.gUtils import Logger
-from .utils.torchUtils import to_cpu, load_classes, provide_determinism, worker_seed_set
+from .utils.torchUtils import to_cpu, load_classes, set_seed, worker_seed_set
 from .Dataset.KITTI2D_Dataset import KITTI2D
 
 
-# from pytorchyolo.utils.transforms import DEFAULT_TRANSFORMS
+from .Dataset.transforms import DEFAULT_TRANSFORMS
 from .utils.parse_configs import parse_data_config
 from .utils.loss import compute_loss
 from .test import _evaluate, _create_validation_data_loader
@@ -43,7 +43,7 @@ def _create_data_loader(data_path, batch_size, img_size, n_cpu, multiscale_train
     # dataset = ListDataset(
     #     img_path, img_size=img_size, multiscale=multiscale_training, transform=AUGMENTATION_TRANSFORMS
     # )
-    dataset = KITTI2D(path=data_path, mode="Train")
+    dataset = KITTI2D(path=data_path, mode="Train", transform=DEFAULT_TRANSFORMS)
     dataloader = DataLoader(
         dataset,
         batch_size=batch_size,
@@ -60,14 +60,14 @@ def run():
     # print_environment_info()
     parser = argparse.ArgumentParser(description="Trains the YOLO model.")
     parser.add_argument(
-        "-m", "--model", type=str, default="configs/yolov3.cfg", help="Path to model definition file (.cfg)"
+        "-m", "--model", type=str, default="configs/yolov3-custom.cfg", help="Path to model definition file (.cfg)"
     )
     parser.add_argument(
         "-d", "--data", type=str, default="configs/kitti2d.data", help="Path to data config file (.data)"
     )
-    parser.add_argument("-e", "--epochs", type=int, default=30, help="Number of epochs")
-    parser.add_argument("-v", "--verbose", action="store_true", help="Makes the training more verbose")
-    parser.add_argument("--n_cpu", type=int, default=4, help="Number of cpu threads to use during batch generation")
+    parser.add_argument("-e", "--epochs", type=int, default=2, help="Number of epochs")
+    parser.add_argument("-v", "--verbose", default=True, action="store_true", help="Makes the training more verbose")
+    parser.add_argument("--n_cpu", type=int, default=8, help="Number of cpu threads to use during batch generation")
     parser.add_argument(
         "--pretrained_weights",
         type=str,
@@ -95,7 +95,7 @@ def run():
     print(f"Command line arguments: {args}")
 
     if args.seed != -1:
-        provide_determinism(args.seed)
+        set_seed(args.seed)
 
     logger = Logger(args.logdir)  # Tensorboard logger
 
@@ -165,7 +165,7 @@ def run():
 
         model.train()  # Set model to training mode
 
-        # for batch_i, (_, imgs, targets) in enumerate(tqdm.tqdm(dataloader, desc=f"Training Epoch {epoch}")):
+        # for batch_i, (imgs, targets) in enumerate(tqdm.tqdm(dataloader, desc=f"Training Epoch {epoch}")):
         for batch_i, (imgs, targets) in enumerate(dataloader):
 
             batches_done = len(dataloader) * epoch + batch_i

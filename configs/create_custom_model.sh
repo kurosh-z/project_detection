@@ -1,10 +1,16 @@
+#!/bin/bash
+
+NUM_CLASSES=$1
+
+
+echo "
 [net]
 # Testing
+#batch=8
+#subdivisions=1
+# Training
 batch=1
 subdivisions=1
-# Training
-# batch=64
-# subdivisions=16
 width=416
 height=416
 channels=3
@@ -600,17 +606,17 @@ activation=leaky
 size=1
 stride=1
 pad=1
-filters=255
+filters=$(expr 3 \* $(expr $NUM_CLASSES \+ 5))
 activation=linear
 
 
 [yolo]
 mask = 6,7,8
 anchors = 10,13,  16,30,  33,23,  30,61,  62,45,  59,119,  116,90,  156,198,  373,326
-classes=4
+classes=$NUM_CLASSES
 num=9
 jitter=.3
-ignore_thresh = .5
+ignore_thresh = .7
 truth_thresh = 1
 random=1
 
@@ -686,17 +692,17 @@ activation=leaky
 size=1
 stride=1
 pad=1
-filters=255
+filters=$(expr 3 \* $(expr $NUM_CLASSES \+ 5))
 activation=linear
 
 
 [yolo]
 mask = 3,4,5
 anchors = 10,13,  16,30,  33,23,  30,61,  62,45,  59,119,  116,90,  156,198,  373,326
-classes=4
+classes=$NUM_CLASSES
 num=9
 jitter=.3
-ignore_thresh = .5
+ignore_thresh = .7
 truth_thresh = 1
 random=1
 
@@ -773,17 +779,17 @@ activation=leaky
 size=1
 stride=1
 pad=1
-filters=255
+filters=$(expr 3 \* $(expr $NUM_CLASSES \+ 5))
 activation=linear
 
 
 [yolo]
 mask = 0,1,2
 anchors = 10,13,  16,30,  33,23,  30,61,  62,45,  59,119,  116,90,  156,198,  373,326
-classes=4
+classes=$NUM_CLASSES
 num=9
 jitter=.3
-ignore_thresh = .5
+ignore_thresh = .7
 truth_thresh = 1
 random=1
-
+" >> yolov3-custom.cfg
