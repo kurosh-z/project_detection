@@ -5,10 +5,11 @@ import torchvision.transforms.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms, utils
 from ..utils.show_image import show_image
 from ..utils.gUtils import mkdir_nested
+from ..utils.torchUtils import worker_seed_set
 from . import transforms as tr
+from .transforms import DEFAULT_TRANSFORMS
 
 
 from ..utils.augUtil import draw_rect
@@ -70,49 +71,108 @@ def create_TrainValidate_Sets(path, ratio=0.8, seed=None):
         bb = np.array([b.tolist() for b in bb])
         if bb.shape[0] == 0 or classes.shape[0] == 0:
             continue
-        k2dValidate.write(trainNameX)
+        k2dValidate.write(validNameX)
         k2dValidate.write("\n")
         labels = np.concatenate((classes, bb), axis=1)
         np.save(os.path.join(validate_path, validNameY), labels, allow_pickle=True)
     k2dValidate.close()
 
 
-def create_Debugging_Sets(path, size, ratio=0.8, seed=None):
-    x_t = np.load(os.path.join(path, "x_train.npy"))
-    y_t = np.load(os.path.join(path, "y_train.npy"), allow_pickle=True)
+def create_Test_Set(path):
 
-    if not seed:
-        seed = 0
-    # generate indices
-    np.random.seed(seed)
-    all_indices = np.arange(x_t.shape[0])
-    shuffledIndices = np.random.permutation(all_indices)[0:size]
-    trainIndices = shuffledIndices[0 : int(ratio * size)]
-    Ktrain_x = x_t[trainIndices, ...]
-    Ktrain_y = y_t[trainIndices, ...]
-    validateIndices = shuffledIndices[int(ratio * size) : :]
-    Kvalidate_x = x_t[validateIndices, ...]
-    Kvalidate_y = y_t[validateIndices, ...]
+    test_path = os.path.join(os.path.join(path, "test"))
+    if not os.path.exists(test_path):
+        mkdir_nested(test_path)
 
-    validate_path = os.path.join(os.path.join(path, "debug/validate"))
-    train_path = os.path.join(os.path.join(path, "debug/train"))
-    if not os.path.exists(validate_path):
-        mkdir_nested(validate_path)
-    if not os.path.exists(train_path):
-        mkdir_nested(train_path)
+    x_test = np.load(os.path.join(path, "x_test.npy"), allow_pickle=True)
+    k2dTest = open("/Users/kurosh/Documents/DEV/python/project_detection/data/k2dTest.txt", "w")
 
-    np.save(os.path.join(train_path, "kTrainX.npy"), Ktrain_x, allow_pickle=True)
-    np.save(os.path.join(train_path, "kTrainY.npy"), Ktrain_y, allow_pickle=True)
-    np.save(os.path.join(validate_path, "kValidX.npy"), Kvalidate_x, allow_pickle=True)
-    np.save(os.path.join(validate_path, "kValidY.npy"), Kvalidate_y, allow_pickle=True)
+    for index in range(x_test.shape[0]):
+        testNameX = "k2d_TestX_{:02d}.npy".format(index)
+        np.save(os.path.join(test_path, testNameX), x_test[index, ...], allow_pickle=True)
+
+        k2dTest.write(testNameX)
+        k2dTest.write("\n")
+
+    k2dTest.close()
+
+
+def _create_data_loader(data_path, batch_size, n_cpu):
+    """Creates a DataLoader for training.
+
+    :param img_path:(str) Path to file containing all paths to training images.
+    :param batch_size:(int) Size of each image batch
+    :param n_cpu:(int) Number of cpu threads to use during batch generation
+    """
+    # TODO: add parameter for multiscale training: Scale images to different sizes
+
+    dataset = KITTI2D(path=data_path, mode="Train", transform=DEFAULT_TRANSFORMS)
+    dataloader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=n_cpu,
+        pin_memory=True,
+        collate_fn=dataset.collate_fn,
+        worker_init_fn=worker_seed_set,
+    )
+    return dataloader
+
+
+class KITTI2D_Test(Dataset):
+    """KITTI2D test dataset."""
+
+    def __init__(self, path, image_size=(416, 416), transform=None):
+        """ """
+        self.path = path
+        self.image_size = image_size
+        self.transform = transform
+        self._load_file_names()
+
+    def __len__(self):
+        return len(self.filenames)
+
+    def _load_file_names(self):
+        _path = os.path.join(self.path, "k2dTest.txt")
+        names_txt = open(_path, "r")
+        self.filenames = names_txt.readlines()
+
+    def _get_file_path(self, idx):
+        name = self.filenames[idx % len(self.filenames)].rstrip()
+        return os.path.join(self.path, "test/" + name)
+
+    def _load_data(self, idx):
+        path = self._get_file_path(idx)
+        print(f"{idx}: {path}")
+        self.x = np.load(path, allow_pickle=True)
+        return path, self.x
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+        img_path, raw_image = self._load_data(idx)
+
+        # Label Placeholder just for making transformation work!
+        labels = np.zeros((1, 5))
+
+        resizer = tr.Resize(self.image_size)
+        image, labels = resizer(raw_image, labels)
+
+        if self.transform:
+            image, labels = self.transform((image, labels))
+
+        return img_path, image
 
 
 class KITTI2D(Dataset):
-    """Face Landmarks dataset."""
+    """KITTI2D train and validate dataset."""
 
     def __init__(self, path, mode="Train", image_size=(416, 416), max_objects=50, transform=None):
         """ """
-        assert mode == "Train" or mode == "Validate", "expected Train or Validate as mode got: {}".format(mode)
+        assert (
+            mode == "Train" or mode == "Validate" or mode == "Test"
+        ), "expected Train or Validate as mode got: {}".format(mode)
         self.path = path
         self.mode = mode
         self.image_size = image_size
@@ -150,6 +210,7 @@ class KITTI2D(Dataset):
 
     def __len__(self):
         return len(self.filenames)
+        
 
     def collate_fn(self, batch):
         images, labels = list(zip(*batch))
@@ -200,17 +261,20 @@ if __name__ == "__main__":
     path = "/Users/kurosh/Documents/DEV/python/project_detection/data"
 
     # create_TrainValidate_Sets(path)
-    # create_Debugging_Sets(path, 100)
-    # create_TrainValidate_Sets(path, ratio=0.8)
-    trainset = KITTI2D(path, mode="Train")
-    # # validateset = KITTI2D(path, mode="Validate")
+    # create_Test_Set(path)
+
+    # trainset = KITTI2D(path, mode="Validate")
+    # validateset = KITTI2D(path, mode="Validate")
+    testdataset = KITTI2D_Test(path)
 
     # train_dataloader = DataLoader(dataset=trainset, batch_size=2, shuffle=False, collate_fn=trainset.collate_fn)
     # # train_features, train_labels = next(iter(train_dataloader))
-    for idx, (images, labels) in enumerate(trainset):
-
-        #     # show_image((images, labels))
+    # for idx, (images, labels) in enumerate(validateset):
+    for idx, image in enumerate(testdataset):
+        #     #     # show_image((images, labels))
         print(idx)
+        plt.imshow(image)
+        plt.show()
 
     # pass
 

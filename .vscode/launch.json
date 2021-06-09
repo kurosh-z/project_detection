@@ -24,6 +24,13 @@
       "request": "launch",
       "module": "src.train",
       "console": "integratedTerminal"
+    },
+    {
+      "name": "Python: detect",
+      "type": "python",
+      "request": "launch",
+      "module": "src.detect",
+      "console": "integratedTerminal"
     }
   ]
 }

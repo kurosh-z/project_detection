@@ -8,9 +8,6 @@ from ..utils.augUtil import *
 from ..utils.show_image import show_image
 import torchvision.transforms as transforms
 
-# lib_path = os.path.join(os.path.realpath("."), "data_aug")
-# sys.path.append(lib_path)
-
 
 class RandomHorizontalFlip(object):
 

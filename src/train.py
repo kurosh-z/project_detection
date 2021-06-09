@@ -12,8 +12,8 @@ import torch.optim as optim
 
 from .Model.load_model import load_model
 from .utils.gUtils import Logger
-from .utils.torchUtils import to_cpu, load_classes, set_seed, worker_seed_set
-from .Dataset.KITTI2D_Dataset import KITTI2D
+from .utils.torchUtils import to_cpu, load_classes, set_seed
+from .Dataset.KITTI2D_Dataset import KITTI2D, _create_data_loader
 
 
 from .Dataset.transforms import DEFAULT_TRANSFORMS
@@ -24,36 +24,36 @@ from terminaltables import AsciiTable
 from torchsummary import summary
 
 
-def _create_data_loader(data_path, batch_size, img_size, n_cpu, multiscale_training=False):
-    """Creates a DataLoader for training.
+# def _create_data_loader(data_path, batch_size, img_size, n_cpu, multiscale_training=False):
+#     """Creates a DataLoader for training.
 
-    :param img_path: Path to file containing all paths to training images.
-    :type img_path: str
-    :param batch_size: Size of each image batch
-    :type batch_size: int
-    :param img_size: Size of each image dimension for yolo
-    :type img_size: int
-    :param n_cpu: Number of cpu threads to use during batch generation
-    :type n_cpu: int
-    :param multiscale_training: Scale images to different sizes randomly
-    :type multiscale_training: bool
-    :return: Returns DataLoader
-    :rtype: DataLoader
-    """
-    # dataset = ListDataset(
-    #     img_path, img_size=img_size, multiscale=multiscale_training, transform=AUGMENTATION_TRANSFORMS
-    # )
-    dataset = KITTI2D(path=data_path, mode="Train", transform=DEFAULT_TRANSFORMS)
-    dataloader = DataLoader(
-        dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=n_cpu,
-        pin_memory=True,
-        collate_fn=dataset.collate_fn,
-        worker_init_fn=worker_seed_set,
-    )
-    return dataloader
+#     :param img_path: Path to file containing all paths to training images.
+#     :type img_path: str
+#     :param batch_size: Size of each image batch
+#     :type batch_size: int
+#     :param img_size: Size of each image dimension for yolo
+#     :type img_size: int
+#     :param n_cpu: Number of cpu threads to use during batch generation
+#     :type n_cpu: int
+#     :param multiscale_training: Scale images to different sizes randomly
+#     :type multiscale_training: bool
+#     :return: Returns DataLoader
+#     :rtype: DataLoader
+#     """
+#     # dataset = ListDataset(
+#     #     img_path, img_size=img_size, multiscale=multiscale_training, transform=AUGMENTATION_TRANSFORMS
+#     # )
+#     dataset = KITTI2D(path=data_path, mode="Train", transform=DEFAULT_TRANSFORMS)
+#     dataloader = DataLoader(
+#         dataset,
+#         batch_size=batch_size,
+#         shuffle=True,
+#         num_workers=n_cpu,
+#         pin_memory=True,
+#         collate_fn=dataset.collate_fn,
+#         worker_init_fn=worker_seed_set,
+#     )
+#     return dataloader
 
 
 def run():
@@ -128,9 +128,8 @@ def run():
     # #################
 
     # Load training dataloader
-    dataloader = _create_data_loader(
-        train_path, mini_batch_size, model.hyperparams["height"], args.n_cpu, args.multiscale_training
-    )
+    # model.hyperparams["height"],
+    dataloader = _create_data_loader(train_path, mini_batch_size, args.n_cpu)
 
     # Load validation dataloader
     validation_dataloader = _create_validation_data_loader(

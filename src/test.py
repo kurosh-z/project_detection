@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 from __future__ import division
-
+import os, sys
 import argparse
 import tqdm
 import numpy as np
@@ -23,6 +23,8 @@ from .utils.torchUtils import (
 )
 from .Dataset.KITTI2D_Dataset import KITTI2D
 from .utils.parse_configs import parse_data_config
+
+from .Dataset.transforms import DEFAULT_TRANSFORMS
 
 
 def evaluate_model_file(
@@ -154,9 +156,18 @@ def _create_validation_data_loader(valid_data_path, batch_size, img_size, n_cpu)
     :return: Returns DataLoader
     :rtype: DataLoader
     """
-    dataset = KITTI2D(path=valid_data_path, mode="Validate")
+    dataset = KITTI2D(
+        path=valid_data_path,
+        mode="Validate",
+        transform=DEFAULT_TRANSFORMS,
+    )
     dataloader = DataLoader(
-        dataset, batch_size=batch_size, shuffle=False, num_workers=n_cpu, pin_memory=True, collate_fn=dataset.collate_fn
+        dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=n_cpu,
+        pin_memory=True,
+        collate_fn=dataset.collate_fn,
     )
     return dataloader
 
@@ -207,4 +218,6 @@ def run():
 
 
 if __name__ == "__main__":
+    curr_path = os.getcwd()
+    sys.path.append(curr_path)
     run()
