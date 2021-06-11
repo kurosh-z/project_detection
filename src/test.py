@@ -160,6 +160,7 @@ def _create_validation_data_loader(valid_data_path, batch_size, img_size, n_cpu)
         path=valid_data_path,
         mode="Validate",
         transform=DEFAULT_TRANSFORMS,
+        image_size=img_size,
     )
     dataloader = DataLoader(
         dataset,

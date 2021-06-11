@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def draw_rect(im, cords, color=None):
+def draw_rect(im, cords, color=None, rectype="original"):
     """Draw the rectangle on the image
 
     Parameters
@@ -17,8 +17,9 @@ def draw_rect(im, cords, color=None):
 
     cords: numpy.ndarray
         Numpy array containing bounding boxes of shape `N X 4` where N is the
-        number of bounding boxes and the bounding boxes are represented in the
-        format `x1 y1 x2 y2`
+        number of bounding boxes
+
+    rectype: "original" | "xywh"
 
     Returns
     -------
@@ -35,14 +36,27 @@ def draw_rect(im, cords, color=None):
 
     if not color:
         color = [255, 255, 255]
-    for cord in cords:
 
-        pt1, pt2 = (cord[1], cord[2]), (cord[3], cord[0])
+    if rectype == "original":
+        for cord in cords:
 
-        pt1 = int(pt1[0]), int(pt1[1])
-        pt2 = int(pt2[0]), int(pt2[1])
+            pt1, pt2 = (cord[1], cord[2]), (cord[3], cord[0])
 
-        im = cv2.rectangle(im.copy(), pt1, pt2, color, int(max(im.shape[:2]) / 200))
+            pt1 = int(pt1[0]), int(pt1[1])
+            pt2 = int(pt2[0]), int(pt2[1])
+
+            im = cv2.rectangle(im.copy(), pt1, pt2, color, int(max(im.shape[:2]) / 200))
+    else:
+        for cord in cords:
+            # xywh
+            x, y, w, h = cord
+            pt1, pt2 = (x - w / 2.0, y - h / 2.0), (x + w / 2.0, y + h / 2.0)
+
+            pt1 = int(pt1[0]), int(pt1[1])
+            pt2 = int(pt2[0]), int(pt2[1])
+
+            im = cv2.rectangle(im.copy(), pt1, pt2, color, int(max(im.shape[:2]) / 200))
+
     return im
 
 

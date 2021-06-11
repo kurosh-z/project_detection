@@ -13,10 +13,8 @@ import torch.optim as optim
 from .Model.load_model import load_model
 from .utils.gUtils import Logger
 from .utils.torchUtils import to_cpu, load_classes, set_seed
-from .Dataset.KITTI2D_Dataset import KITTI2D, _create_data_loader
+from .Dataset.KITTI2D_Dataset import create_train_data_loader
 
-
-from .Dataset.transforms import DEFAULT_TRANSFORMS
 from .utils.parse_configs import parse_data_config
 from .utils.loss import compute_loss
 from .test import _evaluate, _create_validation_data_loader
@@ -91,12 +89,18 @@ def run():
         "--logdir", type=str, default="logs", help="Directory for training log files (e.g. for TensorBoard)"
     )
     parser.add_argument("--seed", type=int, default=-1, help="Makes results reproducable. Set -1 to disable.")
+
+    parser.add_argument(
+        "--epochBaseNum", type=int, default=0, help="set if you want to continue from pretarined weights"
+    )
+
     args = parser.parse_args()
     print(f"Command line arguments: {args}")
 
     if args.seed != -1:
         set_seed(args.seed)
 
+    epochBaseNum = args.epochBaseNum
     logger = Logger(args.logdir)  # Tensorboard logger
 
     # Create output directories if missing
@@ -129,7 +133,7 @@ def run():
 
     # Load training dataloader
     # model.hyperparams["height"],
-    dataloader = _create_data_loader(train_path, mini_batch_size, args.n_cpu)
+    dataloader = create_train_data_loader(train_path, mini_batch_size, args.n_cpu)
 
     # Load validation dataloader
     validation_dataloader = _create_validation_data_loader(
@@ -239,7 +243,8 @@ def run():
 
         # Save model to checkpoint file
         if epoch % args.checkpoint_interval == 0:
-            checkpoint_path = f"checkpoints/yolov3_ckpt_{epoch}.pth"
+            checkpointNum = epochBaseNum + epoch
+            checkpoint_path = f"checkpoints/yolov3_ckpt_{checkpointNum}.pth"
             print(f"---- Saving checkpoint to: '{checkpoint_path}' ----")
             torch.save(model.state_dict(), checkpoint_path)
 
