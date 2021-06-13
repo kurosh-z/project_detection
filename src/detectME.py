@@ -273,7 +273,7 @@ if __name__ == "__main__":
         "nms_thres": 0.5,  # IOU threshold for non-maximum suppression
         "save_images": True,
         "mode": "test-train",
-        "max_num_of_imgs": 10,
+        "max_num_of_imgs": 1,
     }
 
     detectME(**MY_CONF)

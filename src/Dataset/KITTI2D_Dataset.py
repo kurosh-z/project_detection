@@ -113,7 +113,14 @@ def dataloader_factory(
     """
     assert mode in ["Train", "Validate", "test-test", "test-train"]
     if mode in ["test-test", "test-train"]:
-        dataset = KITTI2D_Test(path=data_path, image_size=img_size, mode=mode, transform=TEST_TRANSFORMS)
+        dataset = KITTI2D_Test(
+            path=data_path,
+            image_size=img_size,
+            mode=mode,
+            max_num_of_imgs=max_num_of_imgs,
+            transform=TEST_TRANSFORMS,
+        )
+
         dataloader = DataLoader(
             dataset,
             batch_size=1,
@@ -128,6 +135,7 @@ def dataloader_factory(
     dataset = KITTI2D(
         path=data_path, image_size=img_size, mode=mode, transform=transform, multiscale=multiscale_training
     )
+
     dataloader = DataLoader(
         dataset,
         batch_size=batch_size,
