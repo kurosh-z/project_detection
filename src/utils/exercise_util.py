@@ -361,31 +361,43 @@ def _prepare_data(path):
     return trainX, trainY
 
 
-def draw_testing(pred, img, ax):
+def draw_testing(pred, img, ax, title):
     # Colormap for plotted bounding boxes
-    cmap = {0: "r", "Pedestrian": "g", "Cyclist": "b", "Van": "yellow", "Truck": "black"}
+    cmap = plt.get_cmap("Set1")
+    colors = [cmap(i) for i in np.linspace(0, 1, 5)]
     # we deleted labels other than cars
 
     boxes = pred["boxes"]
     classes = pred["classes"]
+    className = ["Car", "Van", "Truck", "Pedestrian", "Misc"]
 
     # Plot image
     # fig = plt.figure(figsize=(10, 10))
     # ax = fig.add_subplot(111)
     ax.imshow(img)
     ax.axis("off")
-    ax.set_title(f"prediction test")
+    ax.set_title(title)
 
     # Plot colored bounding boxes
     for bbox, cls in zip(boxes, classes):
-        try:
-            cl = cmap[cls]
-        except:
-            cl = cmap["Misc"]
+        # try:
+        #     cl = cmap[cls]
+        # except:
+        #     cl = cmap["Misc"]
         # Add rectangle (x,y), width, heigth
         height = bbox[2] - bbox[0]
         width = bbox[3] - bbox[1]
-        rect = patches.Rectangle((bbox[1], bbox[0]), width, height, linewidth=1, edgecolor=cl, facecolor="none")
+        rect = patches.Rectangle(
+            (bbox[1], bbox[0]), width, height, linewidth=1, edgecolor=colors[int(cls)], facecolor="none"
+        )
+        ax.text(
+            bbox[1],
+            bbox[0],
+            s=className[int(cls)],
+            color="white",
+            verticalalignment="top",
+            bbox={"color": colors[int(cls)], "pad": 0},
+        )
         ax.add_patch(rect)
 
 
@@ -408,8 +420,8 @@ if __name__ == "__main__":
         fig, axis = plt.subplots(1, 2, figsize=(14, 7))
         ax1 = axis[0]
         ax2 = axis[1]
-        draw_testing(y_train[idx], img, ax1)
-        draw_testing(pred_test[idx], img, ax2)
+        draw_testing(y_train[idx], img, ax1, "ground truth")
+        draw_testing(pred_test[idx], img, ax2, "prediction")
         plt.show()
 
     # pred_boxes = [torch.Tensor(x["boxes"]) if x["boxes"] is not None else torch.Tensor(np.zeros((1,4))) for x in pred_test]  # List with n_test elements [n_boxes, 4] ##:
