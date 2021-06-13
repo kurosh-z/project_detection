@@ -279,7 +279,7 @@ def box_iou(box1, box2):
 
 
 def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=None):
-    """Performs Non-Maximum Suppression (NMS) on inference results
+    """Performs Non-Maximum Suppression (NMS) on  results
     Returns:
          detections with shape: nx6 (x1, y1, x2, y2, conf, cls)
     """

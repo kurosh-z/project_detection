@@ -19,17 +19,17 @@
       "console": "integratedTerminal"
     },
     {
-      "name": "Python: train",
+      "name": "Python: trainME",
       "type": "python",
       "request": "launch",
-      "module": "src.train",
+      "module": "src.trainME",
       "console": "integratedTerminal"
     },
     {
-      "name": "Python: detect",
+      "name": "Python: detectME",
       "type": "python",
       "request": "launch",
-      "module": "src.detect",
+      "module": "src.detectME",
       "console": "integratedTerminal"
     }
   ]

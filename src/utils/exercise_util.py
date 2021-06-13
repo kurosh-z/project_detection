@@ -410,7 +410,7 @@ if __name__ == "__main__":
         ax2 = axis[1]
         draw_testing(y_train[idx], img, ax1)
         draw_testing(pred_test[idx], img, ax2)
-        # plt.show()
+        plt.show()
 
     # pred_boxes = [torch.Tensor(x["boxes"]) if x["boxes"] is not None else torch.Tensor(np.zeros((1,4))) for x in pred_test]  # List with n_test elements [n_boxes, 4] ##:
     # pred_classes = [torch.Tensor(x["classes"]) if x["classes"] is not None else torch.Tensor([0]) for x in pred_test] # List with n_test elements [n_boxes]

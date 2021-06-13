@@ -5,7 +5,118 @@ import torch.nn.functional as F
 import torchvision.transforms as transforms
 import imgaug.augmenters as iaa
 from imgaug.augmentables.bbs import BoundingBox, BoundingBoxesOnImage
-from ..utils.torchUtils import xywh2xyxy_np
+from src.utils.torchUtils import xywh2xyxy_np
+from src.utils.augUtil import *
+
+
+class Scale(object):
+    """Scales the image
+    Bounding boxes which have an area of less than 25% in the remaining in the
+    transformed image is dropped. The resolution is maintained, and the remaining
+    area if any is filled by black color.
+    Parameters
+    ----------
+    scale_x: float
+        The factor by which the image is scaled horizontally
+    scale_y: float
+        The factor by which the image is scaled vertically
+    Returns
+    -------
+    numpy.ndaaray
+        Scaled image in the numpy format of shape `HxWxC`
+    numpy.ndarray
+        Tranformed bounding box co-ordinates of the format `n x 4` where n is
+        number of bounding boxes and 4 represents `x1,y1,x2,y2` of the box
+    """
+
+    def __init__(self, scale_x=0.2, scale_y=0.2):
+        self.scale_x = scale_x
+        self.scale_y = scale_y
+
+    def __call__(self, img, bboxes):
+
+        # Chose a random digit to scale by
+
+        img_shape = img.shape
+
+        resize_scale_x = 1 + self.scale_x
+        resize_scale_y = 1 + self.scale_y
+
+        img = cv2.resize(img, None, fx=resize_scale_x, fy=resize_scale_y)
+
+        bboxes[:, :4] *= [resize_scale_x, resize_scale_y, resize_scale_x, resize_scale_y]
+
+        canvas = np.zeros(img_shape, dtype=np.uint8)
+
+        y_lim = int(min(resize_scale_y, 1) * img_shape[0])
+        x_lim = int(min(resize_scale_x, 1) * img_shape[1])
+
+        canvas[:y_lim, :x_lim, :] = img[:y_lim, :x_lim, :]
+
+        img = canvas
+        bboxes = clip_box(bboxes, [0, 0, 1 + img_shape[1], img_shape[0]], 0.25)
+
+        return img, bboxes
+
+
+class Rotate(object):
+    """Rotates an image
+    Bounding boxes which have an area of less than 25% in the remaining in the
+    transformed image is dropped. The resolution is maintained, and the remaining
+    area if any is filled by black color.
+    Parameters
+    ----------
+    angle: float
+        The angle by which the image is to be rotated
+    Returns
+    -------
+    numpy.ndaaray
+        Rotated image in the numpy format of shape `HxWxC`
+    numpy.ndarray
+        Tranformed bounding box co-ordinates of the format `n x 4` where n is
+        number of bounding boxes and 4 represents `x1,y1,x2,y2` of the box
+    """
+
+    def __init__(self, angle):
+        self.angle = angle
+
+    def __call__(self, img, bboxes):
+        """
+        Args:
+            img (PIL Image): Image to be flipped.
+        Returns:
+            PIL Image: Randomly flipped image.
+        """
+
+        angle = self.angle
+        print(self.angle)
+
+        w, h = img.shape[1], img.shape[0]
+        cx, cy = w // 2, h // 2
+
+        corners = get_corners(bboxes)
+
+        corners = np.hstack((corners, bboxes[:, 4:]))
+
+        img = rotate_im(img, angle)
+
+        corners[:, :8] = rotate_box(corners[:, :8], angle, cx, cy, h, w)
+
+        new_bbox = get_enclosing_box(corners)
+
+        scale_factor_x = img.shape[1] / w
+
+        scale_factor_y = img.shape[0] / h
+
+        img = cv2.resize(img, (w, h))
+
+        new_bbox[:, :4] /= [scale_factor_x, scale_factor_y, scale_factor_x, scale_factor_y]
+
+        bboxes = new_bbox
+
+        bboxes = clip_box(bboxes, [0, 0, w, h], 0.25)
+
+        return img, bboxes
 
 
 class ImgAug(object):
@@ -63,9 +174,7 @@ class RelativeLabels(object):
 
 
 class AbsoluteLabels(object):
-    def __init__(
-        self,
-    ):
+    def __init__(self):
         pass
 
     def __call__(self, data):
@@ -83,38 +192,19 @@ class PadSquare(ImgAug):
         self.augmentations = iaa.Sequential([iaa.PadToAspectRatio(1.0, position="center-center").to_deterministic()])
 
 
-# class ToTensor(object):
-#     def __init__(
-#         self,
-#     ):
-#         pass
-
-#     def __call__(self, data):
-#         img, boxes = data
-#         # Extract image as PyTorch tensor
-#         img = transforms.ToTensor()(img)
-
-#         bb_targets = torch.zeros((len(boxes), 6))
-#         bb_targets[:, 1:] = transforms.ToTensor()(boxes)
-
-#         return img, bb_targets
-
-
 class ToTensor(object):
-    """Convert ndarrays in sample to Tensors."""
-
     def __init__(self):
         pass
 
     def __call__(self, data):
-        image, labels = data
+        img, boxes = data
+        # Extract image as PyTorch tensor
+        img = transforms.ToTensor()(img)
 
-        # swap color axis because
-        # numpy image: H x W x C
-        # torch image: C X H X W
-        image = image.transpose((2, 0, 1))
+        bb_targets = torch.zeros((len(boxes), 6))
+        bb_targets[:, 1:] = transforms.ToTensor()(boxes)
 
-        return torch.from_numpy(image), torch.from_numpy(labels)
+        return img, bb_targets
 
 
 class MResize(object):
@@ -180,7 +270,7 @@ class Resize(object):
         return img, boxes
 
 
-class DefaultAug(ImgAug):
+class MinimumAug(ImgAug):
     def __init__(
         self,
     ):
@@ -195,36 +285,30 @@ class DefaultAug(ImgAug):
         )
 
 
-class StrongAug(ImgAug):
-    def __init__(
-        self,
-    ):
-        self.augmentations = iaa.Sequential(
-            [
-                iaa.Dropout([0.0, 0.01]),
-                iaa.Sharpen((0.0, 0.1)),
-                iaa.Affine(rotate=(-10, 10), translate_percent=(-0.1, 0.1), scale=(0.8, 1.5)),
-                iaa.AddToBrightness((-60, 40)),
-                iaa.AddToHue((-20, 20)),
-                iaa.Fliplr(0.5),
-            ]
-        )
+def resize(image, size):
+    image = F.interpolate(image.unsqueeze(0), size=size, mode="nearest").squeeze(0)
+    return image
 
 
-DEFAULT_TRANSFORMS = transforms.Compose(
+REQUIRED_TRANSFORMS = transforms.Compose(
     [
-        AbsoluteLabels(),
+        # AbsoluteLabels(),
         PadSquare(),
         RelativeLabels(),
         ToTensor(),
     ]
 )
 
-
-AUGMENTATION_TRANSFORMS = transforms.Compose(
+TEST_TRANSFORMS = transforms.Compose(
     [
-        AbsoluteLabels(),
-        DefaultAug(),
+        ToTensor(),
+    ]
+)
+
+
+TRAIN_AUGMENTATION = transforms.Compose(
+    [
+        MinimumAug(),
         PadSquare(),
         RelativeLabels(),
         ToTensor(),
