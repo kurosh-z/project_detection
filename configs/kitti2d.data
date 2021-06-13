@@ -1,7 +1,0 @@
-
-classes= 5
-train=data
-valid=data
-names=data/kitti2d.names
-backup=checkpoints/
-eval=kitti2d

@@ -221,21 +221,17 @@ def get_prediction_result(image_path, detections, img_size, output_path, classes
         plt.gca().yaxis.set_major_locator(NullLocator())
         # draw_testing(predict_dict, img, ax2)
         plt.savefig(output_path, bbox_inches="tight", pad_inches=0.0)
-        plt.show()
+        # plt.show()
         plt.close()
 
     return predict_dict
 
 
-def detectME(**configs):
-
-    CONF = dict()
-    if configs is not None:
-        CONF = configs.copy()
+def detectME(**CONF):
 
     for conf_key, value in DEFAULT_CONF.items():
-        if hasattr(CONF, conf_key):
-            print("\n", conf_key, "->", value)
+        if conf_key in CONF:
+            print("\n", conf_key, "->", CONF[conf_key])
         else:
             CONF[conf_key] = value
             print("\n", f"{conf_key} set to default value -> {value}")
@@ -262,4 +258,22 @@ def detectME(**configs):
 if __name__ == "__main__":
     curr_path = os.getcwd()
     sys.path.append(curr_path)
-    detectME()
+
+    MY_CONF = {
+        "model": "configs/yolov3-custom.cfg",
+        "weights": "checkpoints/yolov3_ckpt_300.pth",
+        "test_path": "data",  # root directory where the test numpy files are
+        "classes_names": ["Car"],
+        "output": "output",
+        "batch_size": int(1),
+        "img_size": 416,  # input image size of yolo model
+        "n_cpu": int(4),
+        "iou_thres": 0.5,  # IOU threshold for evalutation
+        "conf_thres": 0.5,  # Object confidence threshold
+        "nms_thres": 0.5,  # IOU threshold for non-maximum suppression
+        "save_images": True,
+        "mode": "test-train",
+        "max_num_of_imgs": 10,
+    }
+
+    detectME(**MY_CONF)
